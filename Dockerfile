@@ -23,8 +23,9 @@ RUN go build -ldflags="-w -s" -trimpath -o nanostatus main.go
 # Final stage - distroless static (no CGO needed)
 FROM gcr.io/distroless/static:nonroot
 COPY --from=backend-builder --chown=nonroot:nonroot /app/nanostatus /nanostatus
-ENV PORT=8080 DB_PATH=/tmp/nanostatus.db
+ENV PORT=8080 DB_PATH=/data/nanostatus.db
 EXPOSE 8080
+VOLUME ["/data"]
 USER nonroot:nonroot
 ENTRYPOINT ["/nanostatus"]
 

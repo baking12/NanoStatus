@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -69,17 +70,34 @@ type ResponseTimeData struct {
 func initDB() {
 	var err error
 	// Use pure Go SQLite driver (no CGO required)
-	// Use /tmp for database file (writable in distroless)
+	// Database path can be set via DB_PATH env var, defaults to ./nanostatus.db
 	dbPath := os.Getenv("DB_PATH")
 	if dbPath == "" {
-		dbPath = "/tmp/nanostatus.db"
+		dbPath = "./nanostatus.db"
 	}
 	
+	// Ensure the directory exists (for Docker volumes)
+	if dir := filepath.Dir(dbPath); dir != "." && dir != "" {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			log.Printf("Warning: Could not create database directory %s: %v", dir, err)
+		}
+	}
+	
+	// Enable WAL mode and configure connection pool for better concurrency
+	// WAL mode allows multiple readers and one writer simultaneously
+	// _busy_timeout sets how long to wait for locks (in milliseconds)
+	dsn := dbPath + "?_journal_mode=WAL&_busy_timeout=5000&_foreign_keys=1"
+	
 	// Open database connection with modernc.org/sqlite
-	sqlDB, err := sql.Open("sqlite", dbPath)
+	sqlDB, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		log.Fatal("Failed to open database:", err)
 	}
+	
+	// Configure connection pool for concurrent access
+	sqlDB.SetMaxOpenConns(1) // SQLite works best with a single connection
+	sqlDB.SetMaxIdleConns(1)
+	sqlDB.SetConnMaxLifetime(time.Hour)
 	
 	// Use GORM with the existing database connection
 	// This ensures we use modernc.org/sqlite instead of the CGO driver
@@ -219,14 +237,16 @@ func checkService(monitor *Monitor) {
 		}
 	}
 
-	// Save check history
+	// Save check history to database (persists response time data)
 	checkHistory := CheckHistory{
 		MonitorID:    monitor.ID,
 		Status:       status,
 		ResponseTime: responseTime,
 		CreatedAt:    time.Now(),
 	}
-	db.Create(&checkHistory)
+	if err := db.Create(&checkHistory).Error; err != nil {
+		log.Printf("Failed to save check history for monitor %d: %v", monitor.ID, err)
+	}
 
 	// Update monitor with latest check
 	now := time.Now()
@@ -300,28 +320,25 @@ func getResponseTimeData(monitorID string) []ResponseTimeData {
 		return []ResponseTimeData{}
 	}
 
-	// Get last 50 checks from database
+	// Get last 50 checks from database, ordered by creation time
 	var checks []CheckHistory
 	db.Where("monitor_id = ?", id).
-		Order("created_at DESC").
+		Order("created_at ASC").
 		Limit(50).
 		Find(&checks)
 
-	// Reverse to show chronological order
+	// If no data, return empty array
+	if len(checks) == 0 {
+		return []ResponseTimeData{}
+	}
+
+	// Convert to response time data format
 	data := make([]ResponseTimeData, len(checks))
-	for i := len(checks) - 1; i >= 0; i-- {
-		check := checks[i]
-		data[len(checks)-1-i] = ResponseTimeData{
+	for i, check := range checks {
+		data[i] = ResponseTimeData{
 			Time:         check.CreatedAt.Format("03:04 PM"),
 			ResponseTime: float64(check.ResponseTime),
 		}
-	}
-
-	// If we don't have enough data, pad with empty entries
-	if len(data) < 50 {
-		padded := make([]ResponseTimeData, 50)
-		copy(padded[50-len(data):], data)
-		return padded
 	}
 
 	return data

@@ -28,9 +28,14 @@ A lightweight, single-container monitoring dashboard built with Go and React.
 
    The application will be available at `http://localhost:8080`
 
-   To persist the database across container restarts:
+   To persist the database and WAL files across container restarts:
    ```bash
-   docker run -p 8080:8080 -v $(pwd)/data:/root nanostatus
+   docker run -p 8080:8080 -v nanostatus-data:/data nanostatus
+   ```
+
+   Or use a local directory:
+   ```bash
+   docker run -p 8080:8080 -v $(pwd)/data:/data nanostatus
    ```
 
 ### Local Development
