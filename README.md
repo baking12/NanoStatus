@@ -1,0 +1,2 @@
+# NanoStatus
+Lightweight status page
