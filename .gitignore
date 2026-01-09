@@ -7,6 +7,11 @@ dist/
 nanostatus
 *.exe
 
+# Database
+*.db
+*.db-shm
+*.db-wal
+
 # Environment
 .env
 .env.local

@@ -3,6 +3,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { 
   Search, 
   Plus, 
@@ -22,7 +31,7 @@ import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianG
 import "./index.css";
 
 interface Monitor {
-  id: string;
+  id: string | number;
   name: string;
   url: string;
   uptime: number;
@@ -53,6 +62,13 @@ export function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [newService, setNewService] = useState({
+    name: "",
+    url: "",
+    isThirdParty: false,
+    icon: "",
+  });
 
   const fetchMonitors = useCallback(async () => {
     try {
@@ -65,7 +81,7 @@ export function App() {
         setSelectedMonitor((prev) => {
           if (prev) {
             // Find and update the selected monitor with latest data
-            const updatedMonitor = data.find((m: Monitor) => m.id === prev.id);
+            const updatedMonitor = data.find((m: Monitor) => String(m.id) === String(prev.id));
             if (updatedMonitor) {
               return updatedMonitor;
             }
@@ -104,6 +120,65 @@ export function App() {
     }
   }, []);
 
+  const createService = async () => {
+    try {
+      const response = await fetch("/api/monitors/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(newService),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        alert("Failed to create service: " + error);
+        return;
+      }
+
+      // Reset form and close dialog
+      setNewService({ name: "", url: "", isThirdParty: false, icon: "" });
+      setDialogOpen(false);
+
+      // Refresh monitors list
+      fetchMonitors();
+      fetchStats();
+    } catch (error) {
+      console.error("Failed to create service:", error);
+      alert("Failed to create service. Please try again.");
+    }
+  };
+
+  const deleteService = async (monitorId: string | number) => {
+    if (!confirm("Are you sure you want to delete this service?")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/monitor?id=${monitorId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        alert("Failed to delete service: " + error);
+        return;
+      }
+
+      // Clear selected monitor if it was deleted
+      if (selectedMonitor && String(selectedMonitor.id) === String(monitorId)) {
+        setSelectedMonitor(null);
+      }
+
+      // Refresh monitors list
+      fetchMonitors();
+      fetchStats();
+    } catch (error) {
+      console.error("Failed to delete service:", error);
+      alert("Failed to delete service. Please try again.");
+    }
+  };
+
   // Initial data fetch
   useEffect(() => {
     fetchMonitors();
@@ -123,7 +198,7 @@ export function App() {
   // Fetch response time data when monitor is selected
   useEffect(() => {
     if (selectedMonitor) {
-      fetchResponseTimeData(selectedMonitor.id);
+      fetchResponseTimeData(String(selectedMonitor.id));
     }
   }, [selectedMonitor, fetchResponseTimeData]);
 
@@ -132,7 +207,7 @@ export function App() {
     if (!selectedMonitor) return;
 
     const interval = setInterval(() => {
-      fetchResponseTimeData(selectedMonitor.id);
+      fetchResponseTimeData(String(selectedMonitor.id));
     }, 10000); // Poll every 10 seconds
 
     return () => clearInterval(interval);
@@ -181,7 +256,10 @@ export function App() {
                 className="pl-9 w-64"
               />
             </div>
-            <Button className="bg-primary hover:bg-primary/90">
+            <Button 
+              className="bg-primary hover:bg-primary/90"
+              onClick={() => setDialogOpen(true)}
+            >
               <Plus className="h-4 w-4 mr-2" />
               Add Service
             </Button>
@@ -260,7 +338,7 @@ export function App() {
             <Card 
               key={monitor.id}
               className={`cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] border-2 ${
-                selectedMonitor?.id === monitor.id 
+                selectedMonitor && String(selectedMonitor.id) === String(monitor.id)
                   ? "ring-2 ring-primary border-primary" 
                   : getStatusBgColor(monitor.status)
               }`}
@@ -341,7 +419,11 @@ export function App() {
                   <Edit className="h-4 w-4 mr-2" />
                   Edit
                 </Button>
-                <Button variant="destructive" size="sm">
+                <Button 
+                  variant="destructive" 
+                  size="sm"
+                  onClick={() => selectedMonitor && deleteService(selectedMonitor.id)}
+                >
                   <Trash2 className="h-4 w-4 mr-2" />
                   Delete
                 </Button>
@@ -468,6 +550,70 @@ export function App() {
           </>
         )}
       </div>
+
+      {/* Add Service Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Add New Service</DialogTitle>
+            <DialogDescription>
+              Add a new service to monitor. Enter the service name and URL.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name">Service Name</Label>
+              <Input
+                id="name"
+                placeholder="My Service"
+                value={newService.name}
+                onChange={(e) => setNewService({ ...newService, name: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="url">URL</Label>
+              <Input
+                id="url"
+                placeholder="https://example.com"
+                value={newService.url}
+                onChange={(e) => setNewService({ ...newService, url: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="icon">Icon (optional)</Label>
+              <Input
+                id="icon"
+                placeholder="📧"
+                value={newService.icon}
+                onChange={(e) => setNewService({ ...newService, icon: e.target.value })}
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="thirdParty"
+                checked={newService.isThirdParty}
+                onChange={(e) => setNewService({ ...newService, isThirdParty: e.target.checked })}
+                className="rounded border-gray-300"
+              />
+              <Label htmlFor="thirdParty" className="text-sm font-normal">
+                Third-party service
+              </Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={createService}
+              disabled={!newService.name || !newService.url}
+            >
+              Add Service
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
