@@ -1,27 +1,30 @@
 # Build stage for frontend
-FROM oven/bun:1 AS frontend-builder
+FROM oven/bun:1-slim AS frontend-builder
 WORKDIR /app
 COPY src/package.json src/bun.lock* ./
-RUN bun install
-COPY src/ ./
-RUN bun run build --outdir=../dist
+# Install all dependencies (including devDependencies needed for build)
+RUN bun install --frozen-lockfile
+COPY src/ ./src/
+WORKDIR /app/src
+RUN bun run build.ts --outdir=../dist && \
+    find ../dist -type f -name "*.map" -delete && \
+    find ../dist -type d -empty -delete
 
 # Build stage for Go backend
-FROM golang:1.21-alpine AS backend-builder
+FROM golang:1.24-alpine AS backend-builder
 WORKDIR /app
 COPY go.mod go.sum* ./
 RUN go mod download
 COPY main.go ./
-# Copy dist from frontend builder
 COPY --from=frontend-builder /app/dist ./dist
-RUN go build -o nanostatus main.go
+ENV CGO_ENABLED=0
+RUN go build -ldflags="-w -s" -trimpath -o nanostatus main.go
 
-# Final stage
-FROM alpine:latest
-RUN apk --no-cache add ca-certificates
-WORKDIR /root/
-COPY --from=backend-builder /app/nanostatus .
+# Final stage - distroless static (no CGO needed)
+FROM gcr.io/distroless/static:nonroot
+COPY --from=backend-builder --chown=nonroot:nonroot /app/nanostatus /nanostatus
+ENV PORT=8080 DB_PATH=/tmp/nanostatus.db
 EXPOSE 8080
-ENV PORT=8080
-CMD ["./nanostatus"]
+USER nonroot:nonroot
+ENTRYPOINT ["/nanostatus"]
 

@@ -5,4 +5,13 @@ nanostatus
 .vscode
 *.md
 .DS_Store
+*.db
+*.db-shm
+*.db-wal
+src/node_modules
+src/dist
+*.log
+.env
+.env.local
+.cache
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	_ "modernc.org/sqlite"
 )
 
 //go:embed dist
@@ -66,7 +68,22 @@ type ResponseTimeData struct {
 
 func initDB() {
 	var err error
-	db, err = gorm.Open(sqlite.Open("nanostatus.db"), &gorm.Config{})
+	// Use pure Go SQLite driver (no CGO required)
+	// Use /tmp for database file (writable in distroless)
+	dbPath := os.Getenv("DB_PATH")
+	if dbPath == "" {
+		dbPath = "/tmp/nanostatus.db"
+	}
+	
+	// Open database connection with modernc.org/sqlite
+	sqlDB, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		log.Fatal("Failed to open database:", err)
+	}
+	
+	// Use GORM with the existing database connection
+	// This ensures we use modernc.org/sqlite instead of the CGO driver
+	db, err = gorm.Open(sqlite.Dialector{Conn: sqlDB}, &gorm.Config{})
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
@@ -88,14 +105,6 @@ func initDB() {
 func seedData() {
 	monitors := []Monitor{
 		{
-			Name:         "Check Port",
-			URL:          "https://checkport.example.com",
-			Uptime:       100,
-			Status:       "up",
-			ResponseTime: 145,
-			LastCheck:    "2s ago",
-		},
-		{
 			Name:         "Example.com",
 			URL:          "https://example.com",
 			Uptime:       100,
@@ -111,22 +120,6 @@ func seedData() {
 			ResponseTime: 67,
 			LastCheck:    "1s ago",
 			IsThirdParty: true,
-		},
-		{
-			Name:         "MySQL",
-			URL:          "mysql://localhost:3306",
-			Uptime:       100,
-			Status:       "up",
-			ResponseTime: 12,
-			LastCheck:    "3s ago",
-		},
-		{
-			Name:         "Ping",
-			URL:          "ping://8.8.8.8",
-			Uptime:       100,
-			Status:       "up",
-			ResponseTime: 23,
-			LastCheck:    "1s ago",
 		},
 	}
 
