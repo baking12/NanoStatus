@@ -1,13 +1,16 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"regexp"
 	"strconv"
 	"time"
+	"unicode/utf8"
 
 	"gopkg.in/yaml.v3"
 )
@@ -520,16 +523,26 @@ func apiExportMonitors(w http.ResponseWriter, r *http.Request) {
 		config.Monitors = append(config.Monitors, monitorConfig)
 	}
 
-	// Marshal to YAML
-	yamlData, err := yaml.Marshal(&config)
-	if err != nil {
+	// Marshal to YAML using encoder with custom options
+	var buf bytes.Buffer
+	encoder := yaml.NewEncoder(&buf)
+	encoder.SetIndent(2) // Use 2-space indentation
+	
+	if err := encoder.Encode(&config); err != nil {
 		log.Printf("[API] ERROR GET /api/monitors/export: Failed to marshal YAML: %v", err)
 		http.Error(w, "Failed to generate YAML", http.StatusInternalServerError)
 		return
 	}
-
+	encoder.Close()
+	
+	yamlData := buf.Bytes()
+	
+	// Convert Unicode escape sequences back to actual emojis
+	// The yaml.v3 library escapes Unicode like "\U0001F4BB" - we need to convert these back
+	yamlData = convertUnicodeEscapes(yamlData)
+	
 	// Set headers for file download
-	w.Header().Set("Content-Type", "application/x-yaml")
+	w.Header().Set("Content-Type", "application/x-yaml; charset=utf-8")
 	w.Header().Set("Content-Disposition", "attachment; filename=monitors.yaml")
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(yamlData)))
 
@@ -540,5 +553,39 @@ func apiExportMonitors(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("[API] GET /api/monitors/export: Exported %d monitors as YAML", len(monitors))
+}
+
+// convertUnicodeEscapes converts YAML Unicode escape sequences like "\U0001F4BB" back to actual emojis
+func convertUnicodeEscapes(data []byte) []byte {
+	// Pattern to match \U followed by 8 hex digits (Unicode escape sequence)
+	// In YAML output, this appears as the literal string "\U0001F4BB"
+	unicodePattern := regexp.MustCompile(`\\U([0-9A-Fa-f]{8})`)
+	
+	result := unicodePattern.ReplaceAllFunc(data, func(match []byte) []byte {
+		// Extract the hex code (8 digits after \U)
+		// match is "\U0001F4BB", so we skip the first 2 bytes (\U) and take the next 8
+		hexStr := string(match[2:10])
+		
+		// Parse the hex string to a rune (Unicode code point)
+		codePoint, err := strconv.ParseUint(hexStr, 16, 32)
+		if err != nil {
+			// If parsing fails, return the original match
+			return match
+		}
+		
+		// Convert the code point to a UTF-8 encoded string
+		r := rune(codePoint)
+		if !utf8.ValidRune(r) {
+			return match
+		}
+		
+		// Encode the rune to UTF-8 bytes
+		utf8Bytes := make([]byte, utf8.RuneLen(r))
+		utf8.EncodeRune(utf8Bytes, r)
+		
+		return utf8Bytes
+	})
+	
+	return result
 }
 
