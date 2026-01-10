@@ -45,7 +45,7 @@ func getStats() StatsResponse {
 	
 	// Get count first
 	db.Model(&CheckHistory{}).
-		Where("created_at > ? AND response_time > 0", twentyFourHoursAgo).
+		Where("created_at > ? AND response_time > 0 AND status = ?", twentyFourHoursAgo, "up").
 		Count(&countResult)
 	
 	if countResult > 0 {
@@ -53,8 +53,8 @@ func getStats() StatsResponse {
 		err := db.Raw(`
 			SELECT AVG(response_time) as avg_response_time 
 			FROM check_histories 
-			WHERE created_at > ? AND response_time > 0
-		`, twentyFourHoursAgo).Row().Scan(&avgResult)
+			WHERE created_at > ? AND response_time > 0 AND status = ?
+		`, twentyFourHoursAgo, "up").Row().Scan(&avgResult)
 		
 		if err == nil && avgResult.Valid {
 			avgResponseTime = int(avgResult.Float64)
@@ -75,7 +75,7 @@ func getStats() StatsResponse {
 			if monitor.Paused {
 				continue
 			}
-			if monitor.ResponseTime > 0 {
+			if monitor.ResponseTime > 0 && monitor.Status == "up" {
 				totalResponseTime += monitor.ResponseTime
 				responseCount++
 			}

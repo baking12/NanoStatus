@@ -71,9 +71,14 @@ func checkService(monitor *Monitor) {
 	checkHistory := CheckHistory{
 		MonitorID:    monitor.ID,
 		Status:       status,
-		ResponseTime: responseTime,
+		ResponseTime: 0,
 		CreatedAt:    time.Now(),
 	}
+
+	if status == "up" && responseTime > 0 {
+		checkHistory.ResponseTime = responseTime
+	}
+
 	if err := db.Create(&checkHistory).Error; err != nil {
 		log.Printf("Failed to save check history for monitor %d: %v", monitor.ID, err)
 	}
