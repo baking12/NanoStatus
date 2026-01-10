@@ -1,0 +1,33 @@
+export interface Monitor {
+  id: string | number;
+  name: string;
+  url: string;
+  uptime: number;
+  status: "up" | "down";
+  responseTime: number;
+  lastCheck: string;
+  isThirdParty?: boolean;
+  icon?: string;
+  checkInterval?: number;
+}
+
+export interface Stats {
+  overallUptime: number;
+  servicesUp: number;
+  servicesDown: number;
+  avgResponseTime: number;
+}
+
+export interface ResponseTimeData {
+  time: string;
+  responseTime: number;
+}
+
+export interface NewService {
+  name: string;
+  url: string;
+  isThirdParty: boolean;
+  icon: string;
+  checkInterval: number;
+}
+
