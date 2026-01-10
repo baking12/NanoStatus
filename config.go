@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"os"
@@ -24,28 +26,31 @@ type ConfigFile struct {
 }
 
 // loadMonitorsFromYAML loads monitors from a YAML configuration file
-func loadMonitorsFromYAML(configPath string) ([]Monitor, error) {
+// Returns monitors with their config hashes calculated
+func loadMonitorsFromYAML(configPath string) ([]Monitor, []string, error) {
 	if configPath == "" {
-		return nil, nil // No config file specified
+		return nil, nil, nil // No config file specified
 	}
 
 	// Check if file exists
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		log.Printf("[Config] Configuration file not found: %s", configPath)
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read config file: %w", err)
+		return nil, nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 
 	var config ConfigFile
 	if err := yaml.Unmarshal(data, &config); err != nil {
-		return nil, fmt.Errorf("failed to parse YAML: %w", err)
+		return nil, nil, fmt.Errorf("failed to parse YAML: %w", err)
 	}
 
 	monitors := make([]Monitor, 0, len(config.Monitors))
+	hashes := make([]string, 0, len(config.Monitors))
+	
 	for _, cfg := range config.Monitors {
 		// Validate required fields
 		if cfg.Name == "" || cfg.URL == "" {
@@ -59,6 +64,9 @@ func loadMonitorsFromYAML(configPath string) ([]Monitor, error) {
 			checkInterval = 60
 		}
 
+		// Calculate hash for this config
+		configHash := calculateConfigHash(cfg)
+
 		monitor := Monitor{
 			Name:         cfg.Name,
 			URL:          cfg.URL,
@@ -66,6 +74,7 @@ func loadMonitorsFromYAML(configPath string) ([]Monitor, error) {
 			CheckInterval: checkInterval,
 			IsThirdParty: cfg.IsThirdParty,
 			Paused:       cfg.Paused,
+			ConfigHash:   configHash,
 			Status:       "unknown",
 			Uptime:       0,
 			ResponseTime: 0,
@@ -73,9 +82,27 @@ func loadMonitorsFromYAML(configPath string) ([]Monitor, error) {
 		}
 
 		monitors = append(monitors, monitor)
+		hashes = append(hashes, configHash)
 	}
 
 	log.Printf("[Config] Loaded %d monitors from %s", len(monitors), configPath)
-	return monitors, nil
+	return monitors, hashes, nil
+}
+
+// calculateConfigHash calculates a SHA256 hash of the monitor configuration
+// This hash is used to detect changes in YAML config
+func calculateConfigHash(cfg MonitorConfig) string {
+	// Create a deterministic string representation of the config
+	configStr := fmt.Sprintf("%s|%s|%s|%d|%v|%v",
+		cfg.Name,
+		cfg.URL,
+		cfg.Icon,
+		cfg.CheckInterval,
+		cfg.IsThirdParty,
+		cfg.Paused,
+	)
+	
+	hash := sha256.Sum256([]byte(configStr))
+	return hex.EncodeToString(hash[:])
 }
 
