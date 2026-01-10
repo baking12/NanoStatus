@@ -60,37 +60,61 @@ func initDB() {
 	var count int64
 	db.Model(&Monitor{}).Count(&count)
 	if count == 0 {
-		seedData()
+		seedData(dbPath)
 	}
 }
 
-// seedData creates initial sample monitors for testing
-func seedData() {
+// seedData creates initial monitors from YAML config or defaults
+// Looks for monitors.yaml in the same directory as the database
+func seedData(dbPath string) {
 	log.Println("Seeding initial data...")
 	
-	monitors := []Monitor{
-		{
-			Name:         "Example.com",
-			URL:          "https://example.com",
-			Status:       "up",
-			ResponseTime: 229,
-			LastCheck:    "5s ago",
-			CheckInterval: 60,
-		},
-		{
-			Name:         "Google",
-			URL:          "https://google.com",
-			Status:       "up",
-			ResponseTime: 2097,
-			LastCheck:    "1s ago",
-			IsThirdParty: true,
-			CheckInterval: 60,
-		},
+	var monitors []Monitor
+	
+	// Look for monitors.yaml in the same directory as the database
+	dbDir := filepath.Dir(dbPath)
+	configPath := filepath.Join(dbDir, "monitors.yaml")
+	
+	// Try to load from YAML config file
+	yamlMonitors, err := loadMonitorsFromYAML(configPath)
+	if err != nil {
+		log.Printf("[Config] Failed to load YAML config from %s: %v, using defaults", configPath, err)
+	}
+	
+	if len(yamlMonitors) > 0 {
+		monitors = yamlMonitors
+		log.Printf("[Config] Using monitors from YAML configuration")
+	} else {
+		// Fallback to hardcoded defaults
+		log.Printf("[Config] No YAML config found, using default monitors")
+		monitors = []Monitor{
+			{
+				Name:         "Example.com",
+				URL:          "https://example.com",
+				Status:       "up",
+				ResponseTime: 229,
+				LastCheck:    "5s ago",
+				CheckInterval: 60,
+			},
+			{
+				Name:         "Google",
+				URL:          "https://google.com",
+				Status:       "up",
+				ResponseTime: 2097,
+				LastCheck:    "1s ago",
+				IsThirdParty: true,
+				CheckInterval: 60,
+			},
+		}
 	}
 
 	for _, monitor := range monitors {
 		if err := db.Create(&monitor).Error; err != nil {
 			log.Printf("Failed to seed monitor %s: %v", monitor.Name, err)
+		} else {
+			log.Printf("[Config] Created monitor: %s (%s)", monitor.Name, monitor.URL)
+			// Immediately check the monitor
+			go checkService(&monitor)
 		}
 	}
 
