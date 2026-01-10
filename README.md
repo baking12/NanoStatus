@@ -182,7 +182,16 @@ monitors:
 - For Docker: If `DB_PATH=/data/nanostatus.db`, place the file at `/data/monitors.yaml`
 - For local: If database is at `./nanostatus.db`, place the file at `./monitors.yaml`
 
-**Note:** The YAML configuration is only loaded when the database is empty (on first startup). If monitors already exist, the YAML file is ignored. To re-import, delete the database file.
+**How It Works:**
+- The YAML configuration is synchronized on every server startup
+- Each monitor from YAML gets a hash calculated from its configuration
+- The system compares hashes to detect changes:
+  - **New monitors** in YAML are created
+  - **Changed monitors** (different hash) are updated (preserving runtime data like status and uptime)
+  - **Removed monitors** (no longer in YAML) are deleted
+  - **Unchanged monitors** are left as-is
+- Monitors created via the UI/API are **not** managed by YAML and won't be modified
+- If a monitor with the same name/URL exists but was created via UI/API, the YAML version will be skipped to avoid duplicates
 
 ### Service Configuration
 
