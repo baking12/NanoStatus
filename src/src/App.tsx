@@ -270,64 +270,69 @@ export function App() {
         </div>
       </header>
 
-      <div className="container mx-auto px-6 py-6">
+      <div className="container mx-auto px-8 py-8">
         {/* Summary Stats */}
         {loading ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">Loading...</p>
+          <div className="text-center py-20">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent"></div>
+            <p className="text-muted-foreground mt-4">Loading...</p>
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-              <Card className="border-2">
-                <CardContent className="pt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8 animate-fade-in">
+              <Card className="border border-border/50 bg-card/50 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] group overflow-hidden relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <CardContent className="pt-6 relative z-10">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground mb-1">Overall Status</p>
-                      <p className="text-3xl font-bold text-foreground">
+                      <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Overall Status</p>
+                      <p className="text-4xl font-bold bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
                         {stats ? Math.round(stats.overallUptime) : 0}%
                       </p>
                     </div>
-                    <div className="p-3 rounded-full bg-primary/10">
+                    <div className="p-3.5 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20 group-hover:scale-110 transition-transform">
                       <Activity className="h-6 w-6 text-primary" />
                     </div>
                   </div>
                 </CardContent>
               </Card>
-              <Card className="border-2">
-                <CardContent className="pt-6">
+              <Card className="border border-border/50 bg-card/50 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] group overflow-hidden relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <CardContent className="pt-6 relative z-10">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground mb-1">Services Up</p>
-                      <p className="text-3xl font-bold text-green-500">{stats?.servicesUp || 0}</p>
+                      <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Services Up</p>
+                      <p className="text-4xl font-bold text-green-500">{stats?.servicesUp || 0}</p>
                     </div>
-                    <div className="p-3 rounded-full bg-green-500/10">
+                    <div className="p-3.5 rounded-2xl bg-gradient-to-br from-green-500/20 to-green-500/10 border border-green-500/20 group-hover:scale-110 transition-transform">
                       <CheckCircle2 className="h-6 w-6 text-green-500" />
                     </div>
                   </div>
                 </CardContent>
               </Card>
-              <Card className="border-2">
-                <CardContent className="pt-6">
+              <Card className="border border-border/50 bg-card/50 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] group overflow-hidden relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <CardContent className="pt-6 relative z-10">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground mb-1">Services Down</p>
-                      <p className="text-3xl font-bold text-red-500">{stats?.servicesDown || 0}</p>
+                      <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Services Down</p>
+                      <p className="text-4xl font-bold text-red-500">{stats?.servicesDown || 0}</p>
                     </div>
-                    <div className="p-3 rounded-full bg-red-500/10">
+                    <div className="p-3.5 rounded-2xl bg-gradient-to-br from-red-500/20 to-red-500/10 border border-red-500/20 group-hover:scale-110 transition-transform">
                       <XCircle className="h-6 w-6 text-red-500" />
                     </div>
                   </div>
                 </CardContent>
               </Card>
-              <Card className="border-2">
-                <CardContent className="pt-6">
+              <Card className="border border-border/50 bg-card/50 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] group overflow-hidden relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <CardContent className="pt-6 relative z-10">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground mb-1">Avg Response</p>
-                      <p className="text-3xl font-bold text-foreground">{stats?.avgResponseTime || 0}ms</p>
+                      <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wider">Avg Response</p>
+                      <p className="text-4xl font-bold bg-gradient-to-br from-blue-500 to-blue-400 bg-clip-text text-transparent">{stats?.avgResponseTime || 0}ms</p>
                     </div>
-                    <div className="p-3 rounded-full bg-blue-500/10">
+                    <div className="p-3.5 rounded-2xl bg-gradient-to-br from-blue-500/20 to-blue-500/10 border border-blue-500/20 group-hover:scale-110 transition-transform">
                       <TrendingUp className="h-6 w-6 text-blue-500" />
                     </div>
                   </div>
@@ -336,65 +341,74 @@ export function App() {
             </div>
 
         {/* Services Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-          {filteredMonitors.map((monitor) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
+          {filteredMonitors.map((monitor, index) => (
             <Card 
               key={monitor.id}
-              className={`cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] border-2 ${
+              className={`cursor-pointer transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] border border-border/50 bg-card/50 backdrop-blur-sm group overflow-hidden relative animate-fade-in ${
                 selectedMonitor && String(selectedMonitor.id) === String(monitor.id)
-                  ? "ring-2 ring-primary border-primary" 
+                  ? "ring-2 ring-primary/50 border-primary/50 shadow-xl shadow-primary/10" 
                   : getStatusBgColor(monitor.status)
               }`}
+              style={{ animationDelay: `${index * 50}ms` }}
               onClick={() => setSelectedMonitor(monitor)}
             >
-              <CardHeader className="pb-3">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/0 to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              <CardHeader className="pb-4 relative z-10">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     {monitor.icon ? (
-                      <span className="text-2xl">{monitor.icon}</span>
+                      <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 group-hover:scale-110 transition-transform">
+                        <span className="text-2xl">{monitor.icon}</span>
+                      </div>
                     ) : (
-                      <div className="p-2 rounded-lg bg-muted">
-                        <Server className="h-4 w-4 text-muted-foreground" />
+                      <div className="p-2.5 rounded-xl bg-muted/50 border border-border/50 group-hover:scale-110 transition-transform">
+                        <Server className="h-5 w-5 text-muted-foreground" />
                       </div>
                     )}
-                    <div>
-                      <CardTitle className="text-lg text-foreground">{monitor.name}</CardTitle>
-                      <p className="text-xs text-muted-foreground mt-1 truncate max-w-[200px]">{monitor.url}</p>
+                    <div className="flex-1 min-w-0">
+                      <CardTitle className="text-lg font-semibold text-foreground mb-1">{monitor.name}</CardTitle>
+                      <p className="text-xs text-muted-foreground truncate">{monitor.url}</p>
                     </div>
                   </div>
-                  <div className={`p-1.5 rounded-full ${getStatusBgColor(monitor.status)}`}>
+                  <div className={`p-2 rounded-xl border transition-all ${
+                    monitor.status === "up" 
+                      ? "bg-green-500/10 border-green-500/20 group-hover:bg-green-500/20" 
+                      : "bg-red-500/10 border-red-500/20 group-hover:bg-red-500/20"
+                  }`}>
                     {monitor.status === "up" ? (
-                      <CheckCircle2 className={`h-4 w-4 ${getStatusColor(monitor.status)}`} />
+                      <CheckCircle2 className={`h-5 w-5 ${getStatusColor(monitor.status)}`} />
                     ) : (
-                      <XCircle className={`h-4 w-4 ${getStatusColor(monitor.status)}`} />
+                      <XCircle className={`h-5 w-5 ${getStatusColor(monitor.status)}`} />
                     )}
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Uptime</span>
-                    <span className="font-semibold text-foreground">{monitor.uptime}%</span>
+              <CardContent className="relative z-10">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-muted-foreground">Uptime</span>
+                    <span className="text-sm font-bold text-foreground">{Math.round(monitor.uptime)}%</span>
                   </div>
                   {monitor.status === "up" && (
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Response</span>
-                      <span className="font-semibold text-foreground">{monitor.responseTime}ms</span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-muted-foreground">Response</span>
+                      <span className="text-sm font-bold text-foreground">{monitor.responseTime}ms</span>
                     </div>
                   )}
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Last Check</span>
-                    <span className="font-semibold text-foreground flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-muted-foreground">Last Check</span>
+                    <span className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5" />
                       {monitor.lastCheck}
                     </span>
                   </div>
-                  <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                  <div className="w-full bg-muted/50 rounded-full h-2.5 overflow-hidden border border-border/50">
                     <div 
-                      className={`h-full transition-all ${
-                        monitor.uptime === 100 ? "bg-green-500" : 
-                        monitor.uptime === 0 ? "bg-red-500" : "bg-yellow-500"
+                      className={`h-full transition-all duration-500 rounded-full ${
+                        monitor.uptime === 100 ? "bg-gradient-to-r from-green-500 to-green-400" : 
+                        monitor.uptime === 0 ? "bg-gradient-to-r from-red-500 to-red-400" : 
+                        "bg-gradient-to-r from-yellow-500 to-yellow-400"
                       }`}
                       style={{ width: `${monitor.uptime}%` }}
                     />
@@ -407,24 +421,38 @@ export function App() {
 
             {/* Selected Service Details */}
             {selectedMonitor && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
+          <div className="space-y-8 animate-slide-in">
+            <div className="flex items-center justify-between pb-6 border-b border-border/50">
               <div>
-                <h2 className="text-3xl font-bold text-foreground mb-2">{selectedMonitor.name}</h2>
-                <p className="text-muted-foreground">{selectedMonitor.url}</p>
+                <div className="flex items-center gap-3 mb-3">
+                  {selectedMonitor.icon ? (
+                    <div className="p-3 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20">
+                      <span className="text-3xl">{selectedMonitor.icon}</span>
+                    </div>
+                  ) : (
+                    <div className="p-3 rounded-2xl bg-muted/50 border border-border/50">
+                      <Server className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                  )}
+                  <div>
+                    <h2 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">{selectedMonitor.name}</h2>
+                    <p className="text-muted-foreground mt-1">{selectedMonitor.url}</p>
+                  </div>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="text-foreground">
+              <div className="flex gap-3">
+                <Button variant="outline" size="sm" className="text-foreground border-border/50 hover:bg-muted/50 hover:border-border transition-all">
                   <Pause className="h-4 w-4 mr-2" />
                   Pause
                 </Button>
-                <Button variant="outline" size="sm" className="text-foreground">
+                <Button variant="outline" size="sm" className="text-foreground border-border/50 hover:bg-muted/50 hover:border-border transition-all">
                   <Edit className="h-4 w-4 mr-2" />
                   Edit
                 </Button>
                 <Button 
                   variant="destructive" 
                   size="sm"
+                  className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-lg shadow-red-500/20 hover:shadow-xl hover:shadow-red-500/30 transition-all"
                   onClick={() => selectedMonitor && deleteService(selectedMonitor.id)}
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
@@ -434,29 +462,31 @@ export function App() {
             </div>
 
             {/* Detailed Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                    <Zap className="h-4 w-4" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+              <Card className="border border-border/50 bg-card/50 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] group overflow-hidden relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <CardHeader className="pb-3 relative z-10">
+                  <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                    <Zap className="h-4 w-4 text-yellow-500" />
                     Current Response
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-3xl font-bold text-foreground">
+                <CardContent className="relative z-10">
+                  <p className="text-4xl font-bold bg-gradient-to-br from-yellow-500 to-yellow-400 bg-clip-text text-transparent">
                     {selectedMonitor.status === "up" ? `${selectedMonitor.responseTime}ms` : "N/A"}
                   </p>
                 </CardContent>
               </Card>
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4" />
+              <Card className="border border-border/50 bg-card/50 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] group overflow-hidden relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <CardHeader className="pb-3 relative z-10">
+                  <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-blue-500" />
                     Avg Response (24h)
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-3xl font-bold text-foreground">
+                <CardContent className="relative z-10">
+                  <p className="text-4xl font-bold bg-gradient-to-br from-blue-500 to-blue-400 bg-clip-text text-transparent">
                     {responseTimeData.length > 0
                       ? `${Math.round(
                           responseTimeData.reduce((sum, data) => sum + data.responseTime, 0) /
@@ -466,80 +496,85 @@ export function App() {
                   </p>
                 </CardContent>
               </Card>
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                    <Activity className="h-4 w-4" />
+              <Card className="border border-border/50 bg-card/50 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] group overflow-hidden relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <CardHeader className="pb-3 relative z-10">
+                  <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-green-500" />
                     Uptime (24h)
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-3xl font-bold text-foreground">
+                <CardContent className="relative z-10">
+                  <p className="text-4xl font-bold bg-gradient-to-br from-green-500 to-green-400 bg-clip-text text-transparent">
                     {selectedMonitor.uptime ? `${Math.round(selectedMonitor.uptime)}%` : "N/A"}
                   </p>
                 </CardContent>
               </Card>
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4" />
+              <Card className="border border-border/50 bg-card/50 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] group overflow-hidden relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <CardHeader className="pb-3 relative z-10">
+                  <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-primary" />
                     Status
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="relative z-10">
                   <Badge
                     className={`${
                       selectedMonitor.status === "up"
-                        ? "bg-green-500 hover:bg-green-600"
-                        : "bg-red-500 hover:bg-red-600"
-                    } text-white px-4 py-2 text-lg`}
+                        ? "bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg shadow-green-500/20"
+                        : "bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 shadow-lg shadow-red-500/20"
+                    } text-white px-5 py-2.5 text-base font-semibold border-0 transition-all`}
                   >
                     {selectedMonitor.status === "up" ? (
                       <CheckCircle2 className="h-5 w-5 mr-2" />
                     ) : (
                       <XCircle className="h-5 w-5 mr-2" />
                     )}
-                    {selectedMonitor.status === "up" ? "Operational" : "Down"}
+                    {selectedMonitor.status === "up" ? "Online" : "Offline"}
                   </Badge>
                 </CardContent>
               </Card>
             </div>
 
             {/* Response Time Chart */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-foreground flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
+            <Card className="border border-border/50 bg-card/50 backdrop-blur-sm shadow-lg">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-xl font-bold text-foreground flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20">
+                    <TrendingUp className="h-5 w-5 text-primary" />
+                  </div>
                   Response Time History
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={responseTimeData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                <ResponsiveContainer width="100%" height={350}>
+                  <LineChart data={responseTimeData} margin={{ top: 10, right: 30, left: 10, bottom: 10 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.2} />
                     <XAxis 
                       dataKey="time" 
-                      tick={{ fill: "#ffffff", fontSize: 13, fontWeight: 600 }}
-                      stroke="#ffffff"
-                      strokeWidth={2}
-                      strokeOpacity={0.8}
+                      tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12, fontWeight: 500 }}
+                      stroke="hsl(var(--border))"
+                      strokeWidth={1}
+                      strokeOpacity={0.5}
                     />
                     <YAxis 
-                      tick={{ fill: "#ffffff", fontSize: 13, fontWeight: 600 }}
-                      stroke="#ffffff"
-                      strokeWidth={2}
-                      strokeOpacity={0.8}
+                      tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12, fontWeight: 500 }}
+                      stroke="hsl(var(--border))"
+                      strokeWidth={1}
+                      strokeOpacity={0.5}
                       domain={[0, 1200]}
-                      label={{ value: 'ms', angle: -90, position: 'insideLeft', fill: "#ffffff", style: { fontWeight: 600, fontSize: 13 } }}
+                      label={{ value: 'ms', angle: -90, position: 'insideLeft', fill: "hsl(var(--muted-foreground))", style: { fontWeight: 500, fontSize: 12 } }}
                     />
                     <Tooltip 
                       contentStyle={{ 
                         backgroundColor: "hsl(var(--card))",
                         border: "1px solid hsl(var(--border))",
-                        borderRadius: "calc(var(--radius) - 2px)",
-                        color: "hsl(var(--foreground))"
+                        borderRadius: "8px",
+                        color: "hsl(var(--foreground))",
+                        boxShadow: "0 10px 40px rgba(0,0,0,0.2)"
                       }}
-                      labelStyle={{ color: "hsl(var(--foreground))" }}
+                      labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 600 }}
                       formatter={(value: number | undefined) => [
                         value !== undefined ? `${value.toFixed(2)} ms` : "N/A",
                         "Response Time"
@@ -548,11 +583,17 @@ export function App() {
                     <Line 
                       type="monotone" 
                       dataKey="responseTime" 
-                      stroke="#22c55e"
+                      stroke="url(#colorGradient)"
                       strokeWidth={3}
                       dot={false}
-                      activeDot={{ r: 6, fill: "#22c55e" }}
+                      activeDot={{ r: 7, fill: "#22c55e", stroke: "#fff", strokeWidth: 2 }}
                     />
+                    <defs>
+                      <linearGradient id="colorGradient" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor="#22c55e" />
+                        <stop offset="100%" stopColor="#10b981" />
+                      </linearGradient>
+                    </defs>
                   </LineChart>
                 </ResponsiveContainer>
               </CardContent>
