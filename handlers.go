@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 // getResponseTimeData retrieves response time history for a monitor within a time range
@@ -479,5 +481,64 @@ func apiMonitor(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[API] ERROR %s /api/monitor: Method not allowed", r.Method)
 	http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+}
+
+// apiExportMonitors handles GET requests to export all monitors as YAML
+func apiExportMonitors(w http.ResponseWriter, r *http.Request) {
+	log.Printf("[API] %s %s", r.Method, r.URL.Path)
+
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	if r.Method != http.MethodGet {
+		log.Printf("[API] ERROR %s /api/monitors/export: Method not allowed", r.Method)
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Fetch all monitors from database
+	var monitors []Monitor
+	if err := db.Find(&monitors).Error; err != nil {
+		log.Printf("[API] ERROR GET /api/monitors/export: Failed to fetch monitors: %v", err)
+		http.Error(w, "Failed to fetch monitors", http.StatusInternalServerError)
+		return
+	}
+
+	// Convert monitors to YAML format
+	config := ConfigFile{
+		Monitors: make([]MonitorConfig, 0, len(monitors)),
+	}
+
+	for _, monitor := range monitors {
+		monitorConfig := MonitorConfig{
+			Name:         monitor.Name,
+			URL:          monitor.URL,
+			Icon:         monitor.Icon,
+			CheckInterval: monitor.CheckInterval,
+			IsThirdParty: monitor.IsThirdParty,
+			Paused:       monitor.Paused,
+		}
+		config.Monitors = append(config.Monitors, monitorConfig)
+	}
+
+	// Marshal to YAML
+	yamlData, err := yaml.Marshal(&config)
+	if err != nil {
+		log.Printf("[API] ERROR GET /api/monitors/export: Failed to marshal YAML: %v", err)
+		http.Error(w, "Failed to generate YAML", http.StatusInternalServerError)
+		return
+	}
+
+	// Set headers for file download
+	w.Header().Set("Content-Type", "application/x-yaml")
+	w.Header().Set("Content-Disposition", "attachment; filename=monitors.yaml")
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(yamlData)))
+
+	// Write YAML data
+	if _, err := w.Write(yamlData); err != nil {
+		log.Printf("[API] ERROR GET /api/monitors/export: Failed to write response: %v", err)
+		return
+	}
+
+	log.Printf("[API] GET /api/monitors/export: Exported %d monitors as YAML", len(monitors))
 }
 

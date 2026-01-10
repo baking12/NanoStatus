@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Search, Plus, Activity } from "lucide-react";
+import { Search, Plus, Activity, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -7,10 +7,11 @@ interface HeaderProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   onAddService: () => void;
+  onExportMonitors: () => void;
   lastUpdate: Date;
 }
 
-export function Header({ searchQuery, onSearchChange, onAddService, lastUpdate }: HeaderProps) {
+export function Header({ searchQuery, onSearchChange, onAddService, onExportMonitors, lastUpdate }: HeaderProps) {
   return (
     <motion.header 
       initial={{ y: -100, opacity: 0 }}
@@ -47,6 +48,15 @@ export function Header({ searchQuery, onSearchChange, onAddService, lastUpdate }
                 className="pl-11 pr-4 w-72 h-11 bg-slate-800/50 border-slate-700/50 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 text-white placeholder:text-slate-500 rounded-xl"
               />
             </div>
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button 
+                className="bg-slate-800/50 border border-slate-700/50 hover:bg-slate-700/50 text-white shadow-lg h-11 px-4 rounded-xl font-semibold"
+                onClick={onExportMonitors}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export
+              </Button>
+            </motion.div>
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Button 
                 className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white shadow-lg shadow-blue-500/25 h-11 px-6 rounded-xl font-semibold"
