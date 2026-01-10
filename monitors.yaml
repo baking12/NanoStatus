@@ -1,0 +1,29 @@
+# NanoStatus Monitors Configuration
+# Place this file as 'monitors.yaml' in the same directory as your database
+# For Docker: If DB_PATH=/data/nanostatus.db, place at /data/monitors.yaml
+# For local: If database is at ./nanostatus.db, place at ./monitors.yaml
+#
+# This configuration is only loaded when the database is empty (first startup)
+
+monitors:
+  - name: "Example.com"
+    url: "https://example.com"
+    icon: "🌐"
+    checkInterval: 60
+    isThirdParty: false
+    paused: false
+
+  - name: "Google"
+    url: "https://google.com"
+    icon: "🔍"
+    checkInterval: 30
+    isThirdParty: true
+    paused: false
+
+  - name: "GitHub"
+    url: "https://github.com"
+    icon: "💻"
+    checkInterval: 120
+    isThirdParty: true
+    paused: false
+
