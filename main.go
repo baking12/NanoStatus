@@ -30,6 +30,7 @@ func main() {
 	// API routes
 	http.HandleFunc("/api/monitors", apiMonitors)
 	http.HandleFunc("/api/monitors/create", apiCreateMonitor)
+	http.HandleFunc("/api/monitors/export", apiExportMonitors)
 	http.HandleFunc("/api/stats", apiStats)
 	http.HandleFunc("/api/response-time", apiResponseTime)
 	http.HandleFunc("/api/monitor", apiMonitor)
@@ -92,6 +93,7 @@ func main() {
 	log.Println("📊 API endpoints:")
 	log.Println("   GET /api/monitors - List all monitors")
 	log.Println("   POST /api/monitors/create - Create a new monitor")
+	log.Println("   GET /api/monitors/export - Export monitors as YAML")
 	log.Println("   GET /api/stats - Get overall statistics")
 	log.Println("   GET /api/response-time?id=<id>&range=<range> - Get response time data")
 	log.Println("   GET /api/monitor?id=<id> - Get specific monitor")

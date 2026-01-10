@@ -214,6 +214,28 @@ export function App() {
     }
   };
 
+  const exportMonitors = async () => {
+    try {
+      const response = await fetch("/api/monitors/export");
+      if (!response.ok) {
+        throw new Error("Failed to export monitors");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "monitors.yaml";
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error("Failed to export monitors:", error);
+      alert("Failed to export monitors. Please try again.");
+    }
+  };
+
   useEffect(() => {
     fetchMonitors();
     fetchStats(); // Initial fetch only
@@ -304,6 +326,7 @@ export function App() {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         onAddService={() => setDialogOpen(true)}
+        onExportMonitors={exportMonitors}
         lastUpdate={lastUpdate}
       />
 
