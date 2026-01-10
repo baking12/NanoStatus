@@ -1,6 +1,9 @@
 # NanoStatus
 
-A lightweight, single-container monitoring dashboard built with Go and React. Monitor your services' uptime, response times, and health in real-time with a beautiful, modern interface.
+Finally got a cursor subscription so wanted to build something cool. NanoStatus is a lightweight, single-container monitoring dashboard built with Go and React. Monitor your services' uptime, response times, and health in real-time with a beautiful, modern interface. I personally made this for my PiZero, UptimeKuma was a little too heavy so wanted to make something a little lighter. 
+
+# Sample
+![Alt text](https://github.com/gregyjames/NanoStatus/blob/add_project/Sample.png?raw=true)
 
 ## ✨ Features
 
@@ -213,7 +216,7 @@ The Dockerfile uses a multi-stage build:
 2. **Backend Builder**: Compiles Go binary with embedded frontend
 3. **Final Stage**: Minimal distroless image (no shell, no package manager)
 
-Result: Ultra-small, secure container (~20MB)
+Result: Ultra-small, secure container (~16MB)
 
 ## 📝 License
 
