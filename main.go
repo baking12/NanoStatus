@@ -157,27 +157,55 @@ func getStats() StatsResponse {
 
 	upCount := 0
 	downCount := 0
-	totalResponseTime := 0
-	upResponseCount := 0
+	totalUptime := 0.0
 
 	for _, monitor := range monitors {
 		if monitor.Status == "up" {
 			upCount++
-			totalResponseTime += monitor.ResponseTime
-			upResponseCount++
 		} else {
 			downCount++
 		}
+		
+		// Sum up all monitors' uptime percentages (calculated from 24h history)
+		totalUptime += monitor.Uptime
 	}
 
-	avgResponseTime := 0
-	if upResponseCount > 0 {
-		avgResponseTime = totalResponseTime / upResponseCount
+	// Calculate average response time from all check history in last 24 hours
+	// This gives a more accurate average across all checks, not just the last check per monitor
+	var avgResponseTime int
+	twentyFourHoursAgo := time.Now().Add(-24 * time.Hour)
+	
+	var result struct {
+		AvgResponseTime float64
+		Count           int64
+	}
+	
+	db.Model(&CheckHistory{}).
+		Select("AVG(response_time) as avg_response_time, COUNT(*) as count").
+		Where("created_at > ? AND response_time > 0", twentyFourHoursAgo).
+		Scan(&result)
+	
+	if result.Count > 0 {
+		avgResponseTime = int(result.AvgResponseTime)
+	} else {
+		// Fallback: calculate from current monitor response times if no history
+		totalResponseTime := 0
+		responseCount := 0
+		for _, monitor := range monitors {
+			if monitor.ResponseTime > 0 {
+				totalResponseTime += monitor.ResponseTime
+				responseCount++
+			}
+		}
+		if responseCount > 0 {
+			avgResponseTime = totalResponseTime / responseCount
+		}
 	}
 
+	// Calculate overall uptime as average of all monitors' historical uptime percentages
 	overallUptime := 0.0
 	if len(monitors) > 0 {
-		overallUptime = float64(upCount) / float64(len(monitors)) * 100
+		overallUptime = totalUptime / float64(len(monitors))
 	}
 
 	return StatsResponse{
@@ -470,7 +498,7 @@ func apiStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	stats := getStats()
-	log.Printf("[API] GET /api/stats: uptime=%.2f%%, up=%d, down=%d, avgResponseTime=%dms", 
+	log.Printf("[API] GET /api/stats: overallUptime=%.2f%%, servicesUp=%d, servicesDown=%d, avgResponseTime=%dms", 
 		stats.OverallUptime, stats.ServicesUp, stats.ServicesDown, stats.AvgResponseTime)
 	json.NewEncoder(w).Encode(stats)
 }
