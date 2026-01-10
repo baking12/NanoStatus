@@ -139,9 +139,63 @@ make clean        # Clean build artifacts
 - `DB_PATH` - Database file path
   - Default: `./nanostatus.db` (local) or `/data/nanostatus.db` (Docker)
 
+### YAML Configuration
+
+You can pre-populate monitors using a YAML configuration file. Place `monitors.yaml` in the same directory as your database file.
+
+**Example `monitors.yaml` (in the same directory as your database):**
+
+```yaml
+monitors:
+  - name: "Example.com"
+    url: "https://example.com"
+    icon: "🌐"
+    checkInterval: 60
+    isThirdParty: false
+    paused: false
+
+  - name: "Google"
+    url: "https://google.com"
+    icon: "🔍"
+    checkInterval: 30
+    isThirdParty: true
+    paused: false
+
+  - name: "GitHub"
+    url: "https://github.com"
+    icon: "💻"
+    checkInterval: 120
+    isThirdParty: true
+    paused: false
+```
+
+**Configuration Fields:**
+- `name` (required) - Display name for the service
+- `url` (required) - Full URL to monitor (e.g., `https://example.com`)
+- `icon` (optional) - Emoji icon to display
+- `checkInterval` (optional) - How often to check in seconds (default: 60)
+- `isThirdParty` (optional) - Whether this is a third-party service (default: false)
+- `paused` (optional) - Whether monitoring should start paused (default: false)
+
+**Location:**
+- The YAML file must be named `monitors.yaml` and placed in the same directory as your database
+- For Docker: If `DB_PATH=/data/nanostatus.db`, place the file at `/data/monitors.yaml`
+- For local: If database is at `./nanostatus.db`, place the file at `./monitors.yaml`
+
+**How It Works:**
+- The YAML configuration is synchronized on every server startup
+- Each monitor from YAML gets a hash calculated from its configuration
+- The system compares hashes to detect changes:
+  - **New monitors** in YAML are created
+  - **Changed monitors** (different hash) are updated (preserving runtime data like status and uptime)
+  - **Removed monitors** (no longer in YAML) are deleted
+  - **Unchanged monitors** are left as-is
+- Monitors created via the UI/API are **not** managed by YAML and won't be modified
+- If a monitor with the same name/URL exists but was created via UI/API, the YAML version will be skipped to avoid duplicates
+
 ### Service Configuration
 
-When creating a monitor, you can configure:
+When creating a monitor via the UI or API, you can configure:
 - **Name**: Display name for the service
 - **URL**: Full URL to monitor (e.g., `https://example.com`)
 - **Icon**: Optional emoji icon
@@ -179,23 +233,26 @@ When creating a monitor, you can configure:
 .
 ├── main.go              # Main server entry point and routing
 ├── models.go            # Data models and structures
-├── database.go          # Database initialization and seeding
-├── checker.go           # Service health checking logic
-├── stats.go             # Statistics calculation
-├── sse.go               # Server-Sent Events broadcasting
-├── handlers.go          # HTTP API endpoint handlers
-├── cleanup.go           # Background cleanup jobs
-├── go.mod               # Go dependencies
-├── go.sum               # Go dependency checksums
-├── Dockerfile           # Standard multi-stage Docker build (distroless)
-├── Dockerfile.minimal   # Minimal Docker build with UPX compression (scratch)
-├── Makefile             # Build automation
-├── dist/                # Frontend build output (generated)
-├── nanostatus.db        # SQLite database (generated)
-├── src/                 # Frontend source code
+├── database.go            # Database initialization and seeding
+├── config.go             # YAML configuration loader
+├── checker.go            # Service health checking logic
+├── stats.go              # Statistics calculation
+├── sse.go                # Server-Sent Events broadcasting
+├── handlers.go           # HTTP API endpoint handlers
+├── cleanup.go            # Background cleanup jobs
+├── go.mod                # Go dependencies
+├── go.sum                # Go dependency checksums
+├── Dockerfile            # Standard multi-stage Docker build (distroless)
+├── Dockerfile.minimal    # Minimal Docker build with UPX compression (scratch)
+├── Makefile              # Build automation
+├── monitors.yaml.example # Example YAML configuration file
+├── dist/                 # Frontend build output (generated)
+├── nanostatus.db         # SQLite database (generated)
+├── monitors.yaml         # YAML config (optional, same dir as DB)
+├── src/                  # Frontend source code
 │   ├── src/
-│   │   ├── App.tsx      # Main React component
-│   │   ├── components/  # React components
+│   │   ├── App.tsx       # Main React component
+│   │   ├── components/   # React components
 │   │   │   ├── Header.tsx
 │   │   │   ├── StatsGrid.tsx
 │   │   │   ├── ServicesGrid.tsx
@@ -203,8 +260,8 @@ When creating a monitor, you can configure:
 │   │   │   ├── MonitorDetails.tsx
 │   │   │   ├── AddServiceDialog.tsx
 │   │   │   ├── EditServiceDialog.tsx
-│   │   │   └── ui/      # shadcn/ui components
-│   │   ├── types/       # TypeScript type definitions
+│   │   │   └── ui/       # shadcn/ui components
+│   │   ├── types/        # TypeScript type definitions
 │   │   └── ...
 │   └── package.json
 └── README.md
