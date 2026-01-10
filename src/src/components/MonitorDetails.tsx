@@ -3,15 +3,16 @@ import { Pause, Edit, Trash2, Zap, TrendingUp, Activity, AlertCircle, BarChart3,
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
-import { Monitor, ResponseTimeData } from "../types";
+import type { Monitor, ResponseTimeData } from "../types";
 
 interface MonitorDetailsProps {
   monitor: Monitor;
   responseTimeData: ResponseTimeData[];
   onDelete: (id: string | number) => void;
+  onEdit: (monitor: Monitor) => void;
 }
 
-export function MonitorDetails({ monitor, responseTimeData, onDelete }: MonitorDetailsProps) {
+export function MonitorDetails({ monitor, responseTimeData, onDelete, onEdit }: MonitorDetailsProps) {
   const avgResponseTime = responseTimeData.length > 0
     ? Math.round(responseTimeData.reduce((sum, data) => sum + data.responseTime, 0) / responseTimeData.length)
     : 0;
@@ -45,18 +46,27 @@ export function MonitorDetails({ monitor, responseTimeData, onDelete }: MonitorD
               </div>
             </div>
             <div className="flex gap-3">
-              <Button variant="outline" size="sm" className="border-slate-700/50 hover:bg-slate-800/50">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="border-slate-700/50 bg-slate-800/30 text-white hover:bg-slate-700/50 hover:text-white hover:border-slate-600/50"
+              >
                 <Pause className="h-4 w-4 mr-2" />
                 Pause
               </Button>
-              <Button variant="outline" size="sm" className="border-slate-700/50 hover:bg-slate-800/50">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="border-slate-700/50 bg-slate-800/30 text-white hover:bg-slate-700/50 hover:text-white hover:border-slate-600/50"
+                onClick={() => onEdit(monitor)}
+              >
                 <Edit className="h-4 w-4 mr-2" />
                 Edit
               </Button>
               <Button 
                 variant="destructive" 
                 size="sm"
-                className="bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700"
+                className="bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white"
                 onClick={() => onDelete(monitor.id)}
               >
                 <Trash2 className="h-4 w-4 mr-2" />

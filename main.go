@@ -545,7 +545,7 @@ func apiMonitor(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[API] %s %s?id=%s", r.Method, r.URL.Path, id)
 	
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, DELETE, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, PUT, DELETE, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
 	if r.Method == http.MethodOptions {
@@ -577,6 +577,65 @@ func apiMonitor(w http.ResponseWriter, r *http.Request) {
 		}
 
 		log.Printf("[API] GET /api/monitor?id=%s: returned monitor name=%q", id, monitor.Name)
+		json.NewEncoder(w).Encode(monitor)
+		return
+	}
+
+	if r.Method == http.MethodPut {
+		w.Header().Set("Content-Type", "application/json")
+		if id == "" {
+			log.Printf("[API] ERROR PUT /api/monitor: Missing id parameter")
+			http.Error(w, "Missing id parameter", http.StatusBadRequest)
+			return
+		}
+
+		monitorID, err := strconv.ParseUint(id, 10, 32)
+		if err != nil {
+			log.Printf("[API] ERROR PUT /api/monitor?id=%s: Invalid id parameter: %v", id, err)
+			http.Error(w, "Invalid id parameter", http.StatusBadRequest)
+			return
+		}
+
+		var monitor Monitor
+		if err := db.First(&monitor, monitorID).Error; err != nil {
+			log.Printf("[API] ERROR PUT /api/monitor?id=%s: Monitor not found", id)
+			http.Error(w, "Monitor not found", http.StatusNotFound)
+			return
+		}
+
+		var req CreateMonitorRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			log.Printf("[API] ERROR PUT /api/monitor?id=%s: Invalid request body: %v", id, err)
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		if req.Name == "" || req.URL == "" {
+			log.Printf("[API] ERROR PUT /api/monitor?id=%s: Missing required fields", id)
+			http.Error(w, "Name and URL are required", http.StatusBadRequest)
+			return
+		}
+
+		// Set default check interval to 60 seconds if not provided
+		checkInterval := req.CheckInterval
+		if checkInterval <= 0 {
+			checkInterval = 60
+		}
+
+		// Update monitor fields
+		monitor.Name = req.Name
+		monitor.URL = req.URL
+		monitor.IsThirdParty = req.IsThirdParty
+		monitor.Icon = req.Icon
+		monitor.CheckInterval = checkInterval
+
+		if err := db.Save(&monitor).Error; err != nil {
+			log.Printf("[API] ERROR PUT /api/monitor?id=%s: Failed to update monitor: %v", id, err)
+			http.Error(w, "Failed to update monitor", http.StatusInternalServerError)
+			return
+		}
+
+		log.Printf("[API] PUT /api/monitor?id=%s: Updated monitor name=%q, url=%q, checkInterval=%ds", id, monitor.Name, monitor.URL, monitor.CheckInterval)
 		json.NewEncoder(w).Encode(monitor)
 		return
 	}

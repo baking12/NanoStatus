@@ -5,6 +5,7 @@ import { StatsGrid } from "./components/StatsGrid";
 import { ServicesGrid } from "./components/ServicesGrid";
 import { MonitorDetails } from "./components/MonitorDetails";
 import { AddServiceDialog } from "./components/AddServiceDialog";
+import { EditServiceDialog } from "./components/EditServiceDialog";
 import type { Monitor, Stats, ResponseTimeData, NewService } from "./types";
 import "./index.css";
 
@@ -17,7 +18,16 @@ export function App() {
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingMonitor, setEditingMonitor] = useState<Monitor | null>(null);
   const [newService, setNewService] = useState<NewService>({
+    name: "",
+    url: "",
+    isThirdParty: false,
+    icon: "",
+    checkInterval: 60,
+  });
+  const [editedService, setEditedService] = useState<NewService>({
     name: "",
     url: "",
     isThirdParty: false,
@@ -126,6 +136,53 @@ export function App() {
     }
   };
 
+  const handleEdit = (monitor: Monitor) => {
+    setEditingMonitor(monitor);
+    setEditedService({
+      name: monitor.name,
+      url: monitor.url,
+      isThirdParty: monitor.isThirdParty || false,
+      icon: monitor.icon || "",
+      checkInterval: monitor.checkInterval || 60,
+    });
+    setEditDialogOpen(true);
+  };
+
+  const updateService = async () => {
+    if (!editingMonitor) return;
+
+    try {
+      const response = await fetch(`/api/monitor?id=${editingMonitor.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(editedService),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        alert("Failed to update service: " + error);
+        return;
+      }
+
+      const updatedMonitor = await response.json();
+      setEditDialogOpen(false);
+      setEditingMonitor(null);
+      
+      // Update selected monitor if it was the one being edited
+      if (selectedMonitor && String(selectedMonitor.id) === String(editingMonitor.id)) {
+        setSelectedMonitor(updatedMonitor);
+      }
+
+      fetchMonitors();
+      fetchStats();
+    } catch (error) {
+      console.error("Failed to update service:", error);
+      alert("Failed to update service. Please try again.");
+    }
+  };
+
   useEffect(() => {
     fetchMonitors();
     fetchStats();
@@ -186,18 +243,59 @@ export function App() {
             className="space-y-8"
           >
             <StatsGrid stats={stats} />
-            <ServicesGrid
-              monitors={filteredMonitors}
-              selectedMonitor={selectedMonitor}
-              onSelectMonitor={setSelectedMonitor}
-            />
-            {selectedMonitor && (
-              <MonitorDetails
-                monitor={selectedMonitor}
-                responseTimeData={responseTimeData}
-                onDelete={deleteService}
-              />
-            )}
+            {/* Mobile/Tablet: Stack services and details */}
+            <div className="lg:hidden space-y-6">
+              <div>
+                <h2 className="text-lg font-bold text-white mb-4">Services</h2>
+                <ServicesGrid
+                  monitors={filteredMonitors}
+                  selectedMonitor={selectedMonitor}
+                  onSelectMonitor={setSelectedMonitor}
+                />
+              </div>
+              {selectedMonitor ? (
+                <MonitorDetails
+                  monitor={selectedMonitor}
+                  responseTimeData={responseTimeData}
+                  onDelete={deleteService}
+                  onEdit={handleEdit}
+                />
+              ) : (
+                <div className="rounded-2xl bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl border border-slate-700/50 p-12 shadow-2xl shadow-black/30 flex items-center justify-center min-h-[400px]">
+                  <div className="text-center">
+                    <p className="text-xl text-slate-400 mb-2">Select a service to view details</p>
+                    <p className="text-sm text-slate-500">Choose a service from above</p>
+                  </div>
+                </div>
+              )}
+            </div>
+            {/* Desktop: Side-by-side layout */}
+            <div className="hidden lg:grid lg:grid-cols-4 gap-6">
+              <div className="lg:col-span-1">
+                <ServicesGrid
+                  monitors={filteredMonitors}
+                  selectedMonitor={selectedMonitor}
+                  onSelectMonitor={setSelectedMonitor}
+                />
+              </div>
+              <div className="lg:col-span-3">
+                {selectedMonitor ? (
+                  <MonitorDetails
+                    monitor={selectedMonitor}
+                    responseTimeData={responseTimeData}
+                    onDelete={deleteService}
+                    onEdit={handleEdit}
+                  />
+                ) : (
+                  <div className="rounded-2xl bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-xl border border-slate-700/50 p-12 shadow-2xl shadow-black/30 flex items-center justify-center min-h-[400px]">
+                    <div className="text-center">
+                      <p className="text-xl text-slate-400 mb-2">Select a service to view details</p>
+                      <p className="text-sm text-slate-500">Choose a service from the list on the left</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </motion.div>
         )}
       </div>
@@ -208,6 +306,15 @@ export function App() {
         newService={newService}
         onServiceChange={setNewService}
         onCreate={createService}
+      />
+
+      <EditServiceDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        monitor={editingMonitor}
+        editedService={editedService}
+        onServiceChange={setEditedService}
+        onUpdate={updateService}
       />
     </div>
   );

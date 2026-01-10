@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Activity, CheckCircle2, XCircle, Gauge } from "lucide-react";
-import { Stats } from "../types";
+import type { Stats } from "../types";
 
 interface StatsGridProps {
   stats: Stats | null;
