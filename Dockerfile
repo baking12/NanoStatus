@@ -15,10 +15,10 @@ FROM golang:1.24-alpine AS backend-builder
 WORKDIR /app
 COPY go.mod go.sum* ./
 RUN go mod download
-COPY main.go ./
+COPY *.go ./
 COPY --from=frontend-builder /app/dist ./dist
 ENV CGO_ENABLED=0
-RUN go build -ldflags="-w -s" -trimpath -o nanostatus main.go
+RUN go build -ldflags="-w -s" -trimpath -o nanostatus .
 
 # Final stage - distroless static (no CGO needed)
 FROM gcr.io/distroless/static:nonroot
