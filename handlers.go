@@ -13,6 +13,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/mailru/easyjson"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v3"
 )
@@ -32,6 +33,7 @@ func setJSONHeaders(w http.ResponseWriter) {
 }
 
 // encodeJSONWithCompression encodes data as JSON with gzip compression if supported
+// Uses easyjson when possible for maximum performance
 func encodeJSONWithCompression(w http.ResponseWriter, r *http.Request, data interface{}) error {
 	// Check if client accepts gzip
 	acceptsGzip := strings.Contains(r.Header.Get("Accept-Encoding"), "gzip")
@@ -41,20 +43,41 @@ func encodeJSONWithCompression(w http.ResponseWriter, r *http.Request, data inte
 	if acceptsGzip {
 		// Compress the JSON
 		gzw := gzip.NewWriter(&buf)
-		encoder := json.NewEncoder(gzw)
-		if err := encoder.Encode(data); err != nil {
-			gzw.Close()
-			return err
+		
+		// Try to use easyjson for supported types
+		if marshaler, ok := data.(easyjson.Marshaler); ok {
+			_, err := easyjson.MarshalToWriter(marshaler, gzw)
+			if err != nil {
+				gzw.Close()
+				return err
+			}
+		} else {
+			// Fallback to standard json for unsupported types
+			encoder := json.NewEncoder(gzw)
+			if err := encoder.Encode(data); err != nil {
+				gzw.Close()
+				return err
+			}
 		}
+		
 		if err := gzw.Close(); err != nil {
 			return err
 		}
 		w.Header().Set("Content-Encoding", "gzip")
 		w.Header().Set("Vary", "Accept-Encoding")
 	} else {
-		encoder := json.NewEncoder(&buf)
-		if err := encoder.Encode(data); err != nil {
-			return err
+		// Try to use easyjson for supported types
+		if marshaler, ok := data.(easyjson.Marshaler); ok {
+			_, err := easyjson.MarshalToWriter(marshaler, &buf)
+			if err != nil {
+				return err
+			}
+		} else {
+			// Fallback to standard json for unsupported types
+			encoder := json.NewEncoder(&buf)
+			if err := encoder.Encode(data); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -191,7 +214,13 @@ func apiCreateMonitor(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req CreateMonitorRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Error().Err(err).Msg("[API] ERROR POST /api/monitors/create: Failed to read body")
+		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		return
+	}
+	if err := easyjson.Unmarshal(bodyBytes, &req); err != nil {
 		log.Error().Err(err).Msg("[API] ERROR POST /api/monitors/create: Invalid request body")
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
@@ -434,6 +463,7 @@ func apiMonitor(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Check if this is a pause/unpause request (has only "paused" field)
+		// Use standard json for anonymous structs
 		var pauseReq struct {
 			Paused *bool `json:"paused"`
 		}
@@ -459,7 +489,7 @@ func apiMonitor(w http.ResponseWriter, r *http.Request) {
 
 		// Regular update request
 		var req CreateMonitorRequest
-		if err := json.Unmarshal(bodyBytes, &req); err != nil {
+		if err := easyjson.Unmarshal(bodyBytes, &req); err != nil {
 			log.Error().Err(err).Str("id", id).Msg("[API] ERROR PUT /api/monitor: Invalid request body")
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
 			return
