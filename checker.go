@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"net"
 	"net/http"
@@ -20,6 +21,7 @@ var httpClient *http.Client
 type MonitorScheduler struct {
 	scheduler gocron.Scheduler
 	jobs      map[uint]gocron.Job // Track jobs by monitor ID
+	intervals map[uint]int        // Track current intervals to detect changes
 	mu        sync.RWMutex
 }
 
@@ -55,6 +57,7 @@ func init() {
 	monitorScheduler = &MonitorScheduler{
 		scheduler: sched,
 		jobs:      make(map[uint]gocron.Job),
+		intervals: make(map[uint]int),
 	}
 	
 	// Start the scheduler
@@ -177,26 +180,54 @@ func checkService(monitorIDOrPtr interface{}) {
 		}
 	}
 
-	// Calculate uptime from last 24 hours of checks using a single query
-	twentyFourHoursAgo := now.Add(-24 * time.Hour)
-	var result struct {
-		TotalCount int64
-		UpCount    int64
+	// Calculate uptime from last 24 hours of checks
+	// Try to use monitor_stats_24h view first for better performance
+	var viewResult struct {
+		TotalChecks    sql.NullInt64
+		UpChecks       sql.NullInt64
+		UptimePercent  sql.NullFloat64
 	}
 	
-	uptimeErr := db.Model(&CheckHistory{}).
-		Select("COUNT(*) as total_count, SUM(CASE WHEN status = 'up' THEN 1 ELSE 0 END) as up_count").
-		Where("monitor_id = ? AND created_at > ?", monitor.ID, twentyFourHoursAgo).
-		Scan(&result).Error
+	viewErr := db.Raw(`
+		SELECT total_checks, up_checks, uptime_percent 
+		FROM monitor_stats_24h 
+		WHERE monitor_id = ?
+	`, monitor.ID).Row().Scan(
+		&viewResult.TotalChecks,
+		&viewResult.UpChecks,
+		&viewResult.UptimePercent,
+	)
 	
-	if uptimeErr == nil && result.TotalCount > 0 {
-		monitor.Uptime = float64(result.UpCount) / float64(result.TotalCount) * 100
-	} else {
-		// If no checks in last 24h, use current status
-		if status == "up" {
-			monitor.Uptime = 100.0
+	if viewErr == nil && viewResult.TotalChecks.Valid && viewResult.TotalChecks.Int64 > 0 {
+		// Use view result
+		if viewResult.UptimePercent.Valid {
+			monitor.Uptime = viewResult.UptimePercent.Float64
 		} else {
-			monitor.Uptime = 0.0
+			monitor.Uptime = float64(viewResult.UpChecks.Int64) / float64(viewResult.TotalChecks.Int64) * 100
+		}
+		log.Debug().Uint("monitor_id", monitor.ID).Float64("uptime", monitor.Uptime).Msg("[Check] Using view for uptime")
+	} else {
+		// Fallback to direct query if view is unavailable
+		twentyFourHoursAgo := now.Add(-24 * time.Hour)
+		var result struct {
+			TotalCount int64
+			UpCount    int64
+		}
+		
+		uptimeErr := db.Model(&CheckHistory{}).
+			Select("COUNT(*) as total_count, SUM(CASE WHEN status = 'up' THEN 1 ELSE 0 END) as up_count").
+			Where("monitor_id = ? AND created_at > ?", monitor.ID, twentyFourHoursAgo).
+			Scan(&result).Error
+		
+		if uptimeErr == nil && result.TotalCount > 0 {
+			monitor.Uptime = float64(result.UpCount) / float64(result.TotalCount) * 100
+		} else {
+			// If no checks in last 24h, use current status
+			if status == "up" {
+				monitor.Uptime = 100.0
+			} else {
+				monitor.Uptime = 0.0
+			}
 		}
 	}
 
@@ -241,26 +272,19 @@ func checkAllServices() {
 }
 
 // addMonitorJob adds or updates a job for a monitor
+// Only updates if interval changed or job doesn't exist
 func (ms *MonitorScheduler) addMonitorJob(monitor *Monitor) error {
-	ms.mu.Lock()
-	
-	// Remove existing job if any - MUST do this first
-	if job, exists := ms.jobs[monitor.ID]; exists {
-		log.Info().Uint("monitor_id", monitor.ID).Msg("[Scheduler] Removing existing job before adding new one")
-		if err := ms.scheduler.RemoveJob(job.ID()); err != nil {
-			log.Warn().Err(err).Uint("monitor_id", monitor.ID).Msg("[Scheduler] Failed to remove existing job")
-		}
-		delete(ms.jobs, monitor.ID)
-		// Give scheduler time to process removal
-		ms.mu.Unlock()
-		time.Sleep(100 * time.Millisecond)
-		ms.mu.Lock()
-	}
-	
 	// Skip paused monitors
 	if monitor.Paused {
-		log.Debug().Uint("monitor_id", monitor.ID).Msg("[Scheduler] Monitor is paused, not adding job")
+		ms.mu.Lock()
+		// Remove job if monitor is now paused
+		if job, exists := ms.jobs[monitor.ID]; exists {
+			ms.scheduler.RemoveJob(job.ID())
+			delete(ms.jobs, monitor.ID)
+			delete(ms.intervals, monitor.ID)
+		}
 		ms.mu.Unlock()
+		log.Debug().Uint("monitor_id", monitor.ID).Msg("[Scheduler] Monitor is paused, not adding job")
 		return nil
 	}
 	
@@ -269,19 +293,48 @@ func (ms *MonitorScheduler) addMonitorJob(monitor *Monitor) error {
 		interval = 60 // Default to 60 seconds
 	}
 	
+	ms.mu.RLock()
+	currentInterval, hasJob := ms.intervals[monitor.ID]
+	ms.mu.RUnlock()
+	
+	// Only update if interval changed or job doesn't exist
+	if hasJob && currentInterval == interval {
+		log.Debug().Uint("monitor_id", monitor.ID).
+			Int("interval", interval).
+			Msg("[Scheduler] Job interval unchanged, skipping update")
+		return nil
+	}
+	
+	// Remove existing job if interval changed
+	ms.mu.Lock()
+	if job, exists := ms.jobs[monitor.ID]; exists {
+		log.Info().Uint("monitor_id", monitor.ID).
+			Int("old_interval", currentInterval).
+			Int("new_interval", interval).
+			Msg("[Scheduler] Interval changed, removing old job")
+		if err := ms.scheduler.RemoveJob(job.ID()); err != nil {
+			log.Warn().Err(err).Uint("monitor_id", monitor.ID).Msg("[Scheduler] Failed to remove existing job")
+		}
+		delete(ms.jobs, monitor.ID)
+		delete(ms.intervals, monitor.ID)
+	}
+	ms.mu.Unlock()
+	
+	// Give scheduler time to process removal
+	time.Sleep(100 * time.Millisecond)
+	
 	// Create job that runs checkService with monitor ID
 	// Capture monitorID in closure
 	monitorID := monitor.ID
 	
-	ms.mu.Unlock()
-	
-	// Create job outside lock to avoid blocking
+	// Create job that runs immediately, then at the specified interval
 	job, err := ms.scheduler.NewJob(
 		gocron.DurationJob(time.Duration(interval)*time.Second),
 		gocron.NewTask(func() {
 			checkService(monitorID)
 		}),
 		gocron.WithName(fmt.Sprintf("monitor-%d", monitorID)),
+		gocron.WithStartAt(gocron.WithStartImmediately()),
 	)
 	
 	if err != nil {
@@ -291,6 +344,7 @@ func (ms *MonitorScheduler) addMonitorJob(monitor *Monitor) error {
 	
 	ms.mu.Lock()
 	ms.jobs[monitor.ID] = job
+	ms.intervals[monitor.ID] = interval
 	ms.mu.Unlock()
 	
 	log.Info().Uint("monitor_id", monitor.ID).
@@ -312,6 +366,7 @@ func (ms *MonitorScheduler) removeMonitorJob(monitorID uint) {
 			log.Warn().Err(err).Uint("monitor_id", monitorID).Msg("[Scheduler] Failed to remove job")
 		}
 		delete(ms.jobs, monitorID)
+		delete(ms.intervals, monitorID)
 		log.Info().Uint("monitor_id", monitorID).Msg("[Scheduler] Removed job for monitor")
 	}
 }
@@ -324,13 +379,13 @@ func (ms *MonitorScheduler) refreshScheduler() {
 		return
 	}
 	
-	log.Info().Int("monitor_count", len(monitors)).Msg("[Scheduler] Refreshing scheduler")
+	log.Debug().Int("monitor_count", len(monitors)).Msg("[Scheduler] Refreshing scheduler")
 	
 	ms.mu.Lock()
 	activeIDs := make(map[uint]bool)
 	ms.mu.Unlock()
 	
-	// Add/update jobs for all monitors - ALWAYS refresh each one
+	// Add/update jobs for all monitors - only update if interval changed
 	for i := range monitors {
 		monitor := &monitors[i]
 		activeIDs[monitor.ID] = true
@@ -342,12 +397,7 @@ func (ms *MonitorScheduler) refreshScheduler() {
 			continue
 		}
 		
-		log.Info().Uint("monitor_id", freshMonitor.ID).
-			Int("check_interval", freshMonitor.CheckInterval).
-			Bool("paused", freshMonitor.Paused).
-			Msg("[Scheduler] Processing monitor for job update")
-		
-		// ALWAYS call addMonitorJob - it will remove old job and add new one with fresh interval
+		// Call addMonitorJob - it will only update if interval changed or job doesn't exist
 		if err := ms.addMonitorJob(&freshMonitor); err != nil {
 			log.Error().Err(err).Uint("monitor_id", freshMonitor.ID).Msg("[Scheduler] Failed to add job")
 		}
